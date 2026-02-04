@@ -61,11 +61,14 @@ public class ManagementCommand implements CommandExecutor {
                         // Actually both managers just delete from World then DB.
                         // But we should probably use the type if possible.
                         player.sendMessage(Component.text("Display deleted.", NamedTextColor.GREEN));
+                        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
                     } else if (sub.equals("tp")) {
                         Location loc = conversionManager.getDisplayLocation(uuid); // Checks all worlds
                         if (loc != null) {
                             player.teleport(loc);
                             player.sendMessage(Component.text("Teleported.", NamedTextColor.GREEN));
+                            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f,
+                                    1.0f);
                         } else {
                             player.sendMessage(Component.text("Display not found.", NamedTextColor.RED));
                         }

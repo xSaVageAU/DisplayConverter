@@ -81,9 +81,13 @@ public class ConversionManager {
 
         // Persist ownership
         String preview = item.getType().toString();
-        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
-            preview = item.getItemMeta().getDisplayName(); // Getting raw display name for simplicity, potentially
-                                                           // convert to plain text?
+        if (item.hasItemMeta()) {
+            // Use Adventure API to avoid deprecation
+            net.kyori.adventure.text.Component displayName = item.getItemMeta().displayName();
+            if (displayName != null) {
+                preview = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(displayName);
+            }
         }
         databaseManager.saveOwnership(display.getUniqueId(), player.getUniqueId(), "ITEM", preview);
 
@@ -91,6 +95,7 @@ public class ConversionManager {
         frame.remove();
 
         player.sendMessage("Converted ItemFrame to ItemDisplay!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
 
     public void deleteDisplay(UUID entityId) {
@@ -147,6 +152,7 @@ public class ConversionManager {
         // Remove from DB
         databaseManager.deleteOwnership(entityId);
         player.sendMessage("Reverted ItemDisplay to ItemFrame!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
 
     public org.bukkit.Location getDisplayLocation(UUID entityId) {

@@ -170,6 +170,7 @@ public class SignConversionManager {
         databaseManager.saveOwnership(textDisplay.getUniqueId(), player.getUniqueId(), "TEXT", plainPreview);
 
         player.sendMessage("Converted Sign to TextDisplay!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
 
     private net.kyori.adventure.text.format.TextColor dyeColorToTextColor(org.bukkit.DyeColor dye) {
@@ -329,6 +330,7 @@ public class SignConversionManager {
         // Remove from DB
         databaseManager.deleteOwnership(entityId);
         player.sendMessage("Reverted TextDisplay to Sign!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
 
     private org.bukkit.DyeColor textColorToDyeColor(net.kyori.adventure.text.format.TextColor color) {
