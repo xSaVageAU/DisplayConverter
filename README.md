@@ -13,6 +13,7 @@ A Paper plugin to convert Item Frames and Signs into Item and Text Displays.
     - Preserves all NBT data (Enchants, Lore, Names).
     - **Smart Revert**: Restores original sign placement, rotation, and glowing text.
 - **Audio Feedback**: Satisfying sound effects for all major actions.
+- **Protection Compatibility**: Respects build permissions from plugins like GriefPrevention or WorldGuard.
 - **Management UI**: List, Teleport, Preview, and Delete displays via `/managedisplays`.
     - Native Item Tooltips for 1:1 preview.
 

@@ -16,10 +16,11 @@ public class FrameInteractListener implements Listener {
         this.conversionManager = conversionManager;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = org.bukkit.event.EventPriority.HIGH)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Player player = event.getPlayer();
-        if (!conversionManager.isConverting(player)) return;
+        if (!conversionManager.isConverting(player))
+            return;
 
         Entity clicked = event.getRightClicked();
         if (clicked instanceof ItemFrame) {
@@ -28,12 +29,14 @@ public class FrameInteractListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = org.bukkit.event.EventPriority.HIGH)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player)) return;
+        if (!(event.getDamager() instanceof Player))
+            return;
         Player player = (Player) event.getDamager();
-        
-        if (!conversionManager.isConverting(player)) return;
+
+        if (!conversionManager.isConverting(player))
+            return;
 
         Entity clicked = event.getEntity();
         if (clicked instanceof ItemFrame) {

@@ -16,7 +16,7 @@ public class SignInteractListener implements Listener {
         this.manager = manager;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = org.bukkit.event.EventPriority.HIGH)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND)
             return; // Main hand only
