@@ -131,26 +131,60 @@ public class ManagementCommand implements CommandExecutor {
         for (int i = start; i < end; i++) {
             DatabaseManager.DisplayData data = displays.get(i);
             UUID uuid = data.entityId();
+
+            // 1. Buttons (Fixed width-ish)
+            Component tpBtn = Component.text("[TP] ", NamedTextColor.AQUA)
+                    .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent
+                            .showText(Component.text("Teleport", NamedTextColor.GRAY)))
+                    .clickEvent(ClickEvent.runCommand("/" + label + " tp " + uuid.toString()));
+
+            Component revBtn = Component.text("[REV] ", NamedTextColor.GOLD)
+                    .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent
+                            .showText(Component.text("Revert", NamedTextColor.GRAY)))
+                    .clickEvent(ClickEvent.runCommand("/" + label + " revert " + uuid.toString()));
+
+            Component delBtn = Component.text("[DEL] ", NamedTextColor.RED)
+                    .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent
+                            .showText(Component.text("Delete", NamedTextColor.GRAY)))
+                    .clickEvent(ClickEvent.runCommand("/" + label + " delete " + uuid.toString()));
+
+            // 2. Info with Tooltip
+            String typeStr = data.type() != null ? data.type() : "UNKNOWN";
+            NamedTextColor typeColor = "ITEM".equals(typeStr) ? NamedTextColor.AQUA : NamedTextColor.LIGHT_PURPLE;
+            String previewText = data.preview() != null && !data.preview().isEmpty() ? data.preview() : "No Preview";
+
+            Component infoText = Component.text("[" + typeStr + "]", typeColor)
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                            Component.text("Content: ", NamedTextColor.GRAY)
+                                    .append(Component.text(previewText, NamedTextColor.WHITE))));
+
+            // Upgrade to Native Item Tooltip if entity is loaded and matches
+            org.bukkit.entity.Entity entity = org.bukkit.Bukkit.getEntity(uuid);
+            if (entity instanceof org.bukkit.entity.ItemDisplay) {
+                org.bukkit.inventory.ItemStack item = ((org.bukkit.entity.ItemDisplay) entity).getItemStack();
+                if (item != null) {
+                    // Use Paper's native hover event generation for 1:1 rendering (Lore, Enchants,
+                    // etc.)
+                    infoText = infoText.hoverEvent(item.asHoverEvent());
+                }
+            }
+
+            // 3. Location
             Location loc = conversionManager.getDisplayLocation(uuid);
             String locStr = (loc == null) ? "Unloaded"
-                    : String.format("%.0f, %.0f, %.0f", loc.getX(), loc.getY(), loc.getZ());
+                    : String.format("%d, %d, %d", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
 
-            String typeTag = data.type().equals("ITEM") ? "[ITEM]" : "[TEXT]";
-            NamedTextColor typeColor = data.type().equals("ITEM") ? NamedTextColor.AQUA : NamedTextColor.LIGHT_PURPLE;
-            String preview = (data.preview() == null || data.preview().isEmpty()) ? "" : " " + data.preview();
+            Component coordsText = Component.text(" (" + locStr + ")", NamedTextColor.DARK_GRAY);
 
-            Component message = Component.text((i + 1) + ". ", NamedTextColor.GRAY)
-                    .append(Component.text(typeTag, typeColor))
-                    .append(Component.text(preview, NamedTextColor.WHITE))
-                    .append(Component.text(" (" + locStr + ") ", NamedTextColor.GRAY))
-                    .append(Component.text("[TP] ", NamedTextColor.GREEN)
-                            .clickEvent(ClickEvent.runCommand("/" + label + " tp " + uuid.toString())))
-                    .append(Component.text("[REVERT] ", NamedTextColor.GOLD)
-                            .clickEvent(ClickEvent.runCommand("/" + label + " revert " + uuid.toString())))
-                    .append(Component.text("[DEL]", NamedTextColor.RED)
-                            .clickEvent(ClickEvent.runCommand("/" + label + " delete " + uuid.toString())));
-
-            player.sendMessage(message);
+            // Combine
+            player.sendMessage(Component.text((i + 1) + ". ", NamedTextColor.GRAY)
+                    .append(tpBtn).append(revBtn).append(delBtn)
+                    .append(Component.text("- ", NamedTextColor.DARK_GRAY))
+                    .append(infoText)
+                    .append(coordsText));
         }
 
         return true;
