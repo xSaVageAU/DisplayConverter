@@ -1,0 +1,10 @@
+# ItemFrameConverter Configuration
+
+# The view distance for the Item Display entities.
+# view-distance: Controls how far (in blocks) the display is visible. 
+# Set to higher values for further visibility, or lower for performance.
+view-distance: 10.0
+
+# sign-text-scale: Controls the size of the text for converted signs.
+# Default: 0.4 (matches vanilla sign text size reasonably well).
+sign-text-scale: 0.4

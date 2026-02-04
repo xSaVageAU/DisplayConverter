@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+bin/
+
+# Mac/OS
+.DS_Store
+Thumbs.db
+
+# Java
+*.class
+*.log
+# Ignore all jars...
+*.jar
+# ...except the wrapper, which is needed for the build to work on other machines
+!gradle/wrapper/gradle-wrapper.jar
+
+# Plugin Specific
+database.db

@@ -1,0 +1,31 @@
+name: ItemFrameConverter
+version: 1.0
+main: com.example.itemframeconverter.ItemFrameConverter
+api-version: 1.21
+commands:
+  convertframe:
+    description: Toggle item frame conversion mode
+    usage: /convertframe
+    permission: itemframeconverter.use
+  convertsign:
+    description: Toggle sign conversion mode
+    usage: /convertsign
+    permission: itemframeconverter.use
+  managedisplays:
+    description: Manage your item displays
+    usage: /managedisplays [page]
+    permission: itemframeconverter.manage.self
+  adminmanagedisplays:
+    description: Manage all item displays
+    usage: /adminmanagedisplays [page]
+    permission: itemframeconverter.manage.admin
+permissions:
+  itemframeconverter.use:
+    description: Allows converting item frames
+    default: op
+  itemframeconverter.manage.self:
+    description: Allows managing own displays
+    default: op
+  itemframeconverter.manage.admin:
+    description: Allows managing all displays
+    default: op
