@@ -118,10 +118,29 @@ public class SignConversionManager {
             textDisplay.setTransformation(t);
         }
 
+        // Apply Color from SignSide
+        org.bukkit.DyeColor dyeColor = signSide.getColor();
+        net.kyori.adventure.text.format.TextColor textColor = dyeColorToTextColor(dyeColor);
+        if (textColor != null) {
+            fullText = fullText.color(textColor);
+        }
+
         textDisplay.text(fullText);
         textDisplay.setAlignment(org.bukkit.entity.TextDisplay.TextAlignment.CENTER);
         textDisplay.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
         textDisplay.setBackgroundColor(org.bukkit.Color.fromARGB(0, 0, 0, 0));
+
+        // Note: Glowing text on signs makes it glowing (outline) or just full bright?
+        // In MC, glowing signs render text full bright + outline.
+        // We can mimic this by making the TextDisplay glow? Or just full opacity?
+        if (signSide.isGlowingText()) {
+            textDisplay.setGlowColorOverride(org.bukkit.Color.WHITE); // Default glow color?
+            textDisplay.setGlowing(true);
+            // Or maybe better: textDisplay.setBrightness(new Display.Brightness(15, 15)); ?
+            // Typically glowing text is readable in dark.
+            // Let's set brightness to max.
+            textDisplay.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));
+        }
 
         // Apply View Distance
         double viewDistanceBlocks = plugin.getConfig().getDouble("view-distance", 10.0);
@@ -151,6 +170,48 @@ public class SignConversionManager {
         databaseManager.saveOwnership(textDisplay.getUniqueId(), player.getUniqueId(), "TEXT", plainPreview);
 
         player.sendMessage("Converted Sign to TextDisplay!");
+    }
+
+    private net.kyori.adventure.text.format.TextColor dyeColorToTextColor(org.bukkit.DyeColor dye) {
+        if (dye == null)
+            return null;
+        switch (dye) {
+            case WHITE:
+                return net.kyori.adventure.text.format.NamedTextColor.WHITE;
+            case ORANGE:
+                return net.kyori.adventure.text.format.NamedTextColor.GOLD;
+            case MAGENTA:
+                return net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE;
+            case LIGHT_BLUE:
+                return net.kyori.adventure.text.format.NamedTextColor.AQUA;
+            case YELLOW:
+                return net.kyori.adventure.text.format.NamedTextColor.YELLOW;
+            case LIME:
+                return net.kyori.adventure.text.format.NamedTextColor.GREEN;
+            case PINK:
+                return net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE; // Close enough? Pink isn't in
+                                                                                    // NamedTextColor strict
+            case GRAY:
+                return net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY;
+            case LIGHT_GRAY:
+                return net.kyori.adventure.text.format.NamedTextColor.GRAY;
+            case CYAN:
+                return net.kyori.adventure.text.format.NamedTextColor.DARK_AQUA;
+            case PURPLE:
+                return net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE;
+            case BLUE:
+                return net.kyori.adventure.text.format.NamedTextColor.BLUE;
+            case BROWN:
+                return net.kyori.adventure.text.format.NamedTextColor.GOLD; // Approximate
+            case GREEN:
+                return net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN;
+            case RED:
+                return net.kyori.adventure.text.format.NamedTextColor.RED;
+            case BLACK:
+                return net.kyori.adventure.text.format.NamedTextColor.BLACK;
+            default:
+                return net.kyori.adventure.text.format.NamedTextColor.WHITE;
+        }
     }
 
     private float faceToYaw(org.bukkit.block.BlockFace face) {
@@ -245,6 +306,22 @@ public class SignConversionManager {
                 for (int i = 0; i < Math.min(4, lines.length); i++) {
                     side.line(i, Component.text(lines[i]));
                 }
+
+                // Restore Color
+                net.kyori.adventure.text.format.TextColor textColor = text.color();
+                // If the top component doesn't have color, it might be in children or defaults.
+                // Assuming top component has it from our convert logic.
+                if (textColor != null) {
+                    org.bukkit.DyeColor dye = textColorToDyeColor(textColor);
+                    if (dye != null) {
+                        side.setColor(dye);
+                    }
+                }
+
+                // Restore Glowing
+                if (display.isGlowing()) {
+                    side.setGlowingText(true);
+                }
             }
             sign.update();
         }
@@ -252,5 +329,43 @@ public class SignConversionManager {
         // Remove from DB
         databaseManager.deleteOwnership(entityId);
         player.sendMessage("Reverted TextDisplay to Sign!");
+    }
+
+    private org.bukkit.DyeColor textColorToDyeColor(net.kyori.adventure.text.format.TextColor color) {
+        if (color == null)
+            return org.bukkit.DyeColor.BLACK;
+
+        // Check NamedTextColor equality
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.WHITE))
+            return org.bukkit.DyeColor.WHITE;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.GOLD))
+            return org.bukkit.DyeColor.ORANGE;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE))
+            return org.bukkit.DyeColor.MAGENTA; // or PINK
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.AQUA))
+            return org.bukkit.DyeColor.LIGHT_BLUE;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+            return org.bukkit.DyeColor.YELLOW;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.GREEN))
+            return org.bukkit.DyeColor.LIME;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY))
+            return org.bukkit.DyeColor.GRAY;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.GRAY))
+            return org.bukkit.DyeColor.LIGHT_GRAY;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.DARK_AQUA))
+            return org.bukkit.DyeColor.CYAN;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE))
+            return org.bukkit.DyeColor.PURPLE;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.BLUE))
+            return org.bukkit.DyeColor.BLUE;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.DARK_GREEN))
+            return org.bukkit.DyeColor.GREEN;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.RED))
+            return org.bukkit.DyeColor.RED;
+        if (color.equals(net.kyori.adventure.text.format.NamedTextColor.BLACK))
+            return org.bukkit.DyeColor.BLACK;
+
+        // Approximate fallback?
+        return org.bukkit.DyeColor.BLACK;
     }
 }

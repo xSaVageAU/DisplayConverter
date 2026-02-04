@@ -59,10 +59,14 @@ public class ConversionManager {
 
         // Align display to face the same way as the frame
         display.setRotation(loc.getYaw(), loc.getPitch());
+        display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED); // Fixes mirroring issue by matching
+                                                                                 // Frame rendering
 
         // Apply rotation from the item frame interaction
         int rotOrd = rotation.ordinal();
-        float zRot = (float) Math.toRadians(rotOrd * 45);
+        // ItemFrames rotate clockwise. AxisAngle4f rotates CCW around the axis.
+        // So we need to negate the angle to rotate clockwise.
+        float zRot = (float) Math.toRadians(-rotOrd * 45);
 
         Transformation t = display.getTransformation();
         t.getScale().set(0.5f);
