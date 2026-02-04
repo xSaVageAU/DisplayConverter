@@ -1,6 +1,6 @@
-# DisplayConverter (ModernDisplays)
+# DisplayConverter
 
-A Paper plugin to convert laggy Item Frames and Signs into efficient, server-friendly Item and Text Displays.
+A Paper plugin to convert Item Frames and Signs into Item and Text Displays.
 
 ## Features
 - **Item Frame Conversion**: Punch an Item Frame while in mode (`/convertframe`) to convert it.
