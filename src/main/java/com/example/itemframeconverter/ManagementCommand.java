@@ -16,11 +16,14 @@ import java.util.UUID;
 public class ManagementCommand implements CommandExecutor {
 
     private final ConversionManager conversionManager;
+    private final SignConversionManager signConversionManager;
     private final DatabaseManager databaseManager;
     private final boolean isAdmin;
 
-    public ManagementCommand(ConversionManager conversionManager, DatabaseManager databaseManager, boolean isAdmin) {
+    public ManagementCommand(ConversionManager conversionManager, SignConversionManager signConversionManager,
+            DatabaseManager databaseManager, boolean isAdmin) {
         this.conversionManager = conversionManager;
+        this.signConversionManager = signConversionManager;
         this.databaseManager = databaseManager;
         this.isAdmin = isAdmin;
     }
@@ -35,26 +38,57 @@ public class ManagementCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length > 0) {
-            if (args[0].equalsIgnoreCase("delete") && args.length == 2) {
+            String sub = args[0].equalsIgnoreCase("delete") ? "delete"
+                    : args[0].equalsIgnoreCase("tp") ? "tp" : args[0].equalsIgnoreCase("revert") ? "revert" : null;
+
+            if (sub != null && args.length == 2) {
                 try {
                     UUID uuid = UUID.fromString(args[1]);
-                    conversionManager.deleteDisplay(uuid);
-                    player.sendMessage(Component.text("Display deleted.", NamedTextColor.GREEN));
-                } catch (IllegalArgumentException e) {
-                    player.sendMessage(Component.text("Invalid UUID.", NamedTextColor.RED));
-                }
-                return true;
-            }
-            if (args[0].equalsIgnoreCase("tp") && args.length == 2) {
-                try {
-                    UUID uuid = UUID.fromString(args[1]);
-                    Location loc = conversionManager.getDisplayLocation(uuid);
-                    if (loc != null) {
-                        player.teleport(loc);
-                        player.sendMessage(Component.text("Teleported to display.", NamedTextColor.GREEN));
-                    } else {
-                        player.sendMessage(Component.text("Display not found (it might be in an unloaded chunk).",
-                                NamedTextColor.RED));
+
+                    // Ideally we'd know the type to call the right manager, or managers would
+                    // check.
+                    // But we can check the DB first to get the type? Or just try both?
+                    // Let's try to get info from DB to know type.
+                    // But databaseManager.getDisplays returns a list.
+                    // Let's iterate all displays to find it, or add getDisplay(UUID) to DB.
+                    // For simply, let's just assume we can get it from the generic list or
+                    // try-catch.
+                    // Better: The Managers' methods check validity.
+
+                    if (sub.equals("delete")) {
+                        conversionManager.deleteDisplay(uuid); // This handles DB delete too
+                        // Also try sign manager for consistency?
+                        // Actually both managers just delete from World then DB.
+                        // But we should probably use the type if possible.
+                        player.sendMessage(Component.text("Display deleted.", NamedTextColor.GREEN));
+                    } else if (sub.equals("tp")) {
+                        Location loc = conversionManager.getDisplayLocation(uuid); // Checks all worlds
+                        if (loc != null) {
+                            player.teleport(loc);
+                            player.sendMessage(Component.text("Teleported.", NamedTextColor.GREEN));
+                        } else {
+                            player.sendMessage(Component.text("Display not found.", NamedTextColor.RED));
+                        }
+                    } else if (sub.equals("revert")) {
+                        // We need to know which manager to call to RESTORE the block/item.
+                        // ItemDisplay -> ConversionManager
+                        // TextDisplay -> SignConversionManager
+                        // Let's check the entity type in the world first?
+                        // Managers' revertDisplay checks type. So we can try both or check entity.
+                        // Let's check entity.
+                        org.bukkit.entity.Entity entity = org.bukkit.Bukkit.getEntity(uuid);
+                        if (entity instanceof org.bukkit.entity.ItemDisplay) {
+                            conversionManager.revertDisplay(uuid, player);
+                        } else if (entity instanceof org.bukkit.entity.TextDisplay) {
+                            signConversionManager.revertDisplay(uuid, player);
+                        } else {
+                            // Maybe chunk unloaded?
+                            // If unloaded, we can't revert anyway (can't spawn/mod blocks reliably without
+                            // loading).
+                            // So just say unknown.
+                            player.sendMessage(
+                                    Component.text("Entity not found (chunk unloaded?)", NamedTextColor.RED));
+                        }
                     }
                 } catch (IllegalArgumentException e) {
                     player.sendMessage(Component.text("Invalid UUID.", NamedTextColor.RED));
@@ -72,7 +106,7 @@ public class ManagementCommand implements CommandExecutor {
             }
         }
 
-        List<UUID> displays;
+        List<DatabaseManager.DisplayData> displays;
         if (isAdmin) {
             displays = databaseManager.getAllDisplays();
         } else {
@@ -95,16 +129,25 @@ public class ManagementCommand implements CommandExecutor {
         player.sendMessage(Component.text("Displays (Page " + page + "):", NamedTextColor.GOLD));
 
         for (int i = start; i < end; i++) {
-            UUID uuid = displays.get(i);
+            DatabaseManager.DisplayData data = displays.get(i);
+            UUID uuid = data.entityId();
             Location loc = conversionManager.getDisplayLocation(uuid);
-            String locStr = (loc == null) ? "Unknown/Unloaded"
+            String locStr = (loc == null) ? "Unloaded"
                     : String.format("%.0f, %.0f, %.0f", loc.getX(), loc.getY(), loc.getZ());
 
+            String typeTag = data.type().equals("ITEM") ? "[ITEM]" : "[TEXT]";
+            NamedTextColor typeColor = data.type().equals("ITEM") ? NamedTextColor.AQUA : NamedTextColor.LIGHT_PURPLE;
+            String preview = (data.preview() == null || data.preview().isEmpty()) ? "" : " " + data.preview();
+
             Component message = Component.text((i + 1) + ". ", NamedTextColor.GRAY)
-                    .append(Component.text(locStr, NamedTextColor.WHITE))
-                    .append(Component.text(" [TP] ", NamedTextColor.AQUA)
+                    .append(Component.text(typeTag, typeColor))
+                    .append(Component.text(preview, NamedTextColor.WHITE))
+                    .append(Component.text(" (" + locStr + ") ", NamedTextColor.GRAY))
+                    .append(Component.text("[TP] ", NamedTextColor.GREEN)
                             .clickEvent(ClickEvent.runCommand("/" + label + " tp " + uuid.toString())))
-                    .append(Component.text(" [DELETE]", NamedTextColor.RED)
+                    .append(Component.text("[REVERT] ", NamedTextColor.GOLD)
+                            .clickEvent(ClickEvent.runCommand("/" + label + " revert " + uuid.toString())))
+                    .append(Component.text("[DEL]", NamedTextColor.RED)
                             .clickEvent(ClickEvent.runCommand("/" + label + " delete " + uuid.toString())));
 
             player.sendMessage(message);

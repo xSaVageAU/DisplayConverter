@@ -4,7 +4,10 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -27,7 +30,6 @@ public class DatabaseManager {
             File dbFile = new File(dataFolder, "database.db");
             String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
 
-            // Load the SQLite driver
             // Load the SQLite driver
             Class.forName("org.sqlite.JDBC");
 
@@ -54,6 +56,8 @@ public class DatabaseManager {
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "entity_uuid VARCHAR(36) NOT NULL," +
                 "owner_uuid VARCHAR(36) NOT NULL," +
+                "type VARCHAR(10) DEFAULT 'ITEM'," +
+                "preview VARCHAR(255) DEFAULT ''," +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                 ");";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -63,44 +67,17 @@ public class DatabaseManager {
         }
     }
 
-    public void saveOwnership(UUID entityId, UUID ownerId) {
-        String sql = "INSERT INTO display_ownership(entity_uuid, owner_uuid) VALUES(?, ?)";
+    public void saveOwnership(UUID entityId, UUID ownerId, String type, String preview) {
+        String sql = "INSERT INTO display_ownership(entity_uuid, owner_uuid, type, preview) VALUES(?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, entityId.toString());
             stmt.setString(2, ownerId.toString());
+            stmt.setString(3, type);
+            stmt.setString(4, preview != null ? preview : "");
             stmt.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save ownership", e);
         }
-    }
-
-    public java.util.List<UUID> getDisplays(UUID ownerId) {
-        java.util.List<UUID> displays = new java.util.ArrayList<>();
-        String sql = "SELECT entity_uuid FROM display_ownership WHERE owner_uuid = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, ownerId.toString());
-            java.sql.ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                displays.add(UUID.fromString(rs.getString("entity_uuid")));
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not get displays", e);
-        }
-        return displays;
-    }
-
-    public java.util.List<UUID> getAllDisplays() {
-        java.util.List<UUID> displays = new java.util.ArrayList<>();
-        String sql = "SELECT entity_uuid FROM display_ownership";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            java.sql.ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                displays.add(UUID.fromString(rs.getString("entity_uuid")));
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not get all displays", e);
-        }
-        return displays;
     }
 
     public void deleteOwnership(UUID entityId) {
@@ -111,5 +88,43 @@ public class DatabaseManager {
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not delete ownership", e);
         }
+    }
+
+    public record DisplayData(UUID entityId, String type, String preview) {
+    }
+
+    public List<DisplayData> getDisplays(UUID ownerId) {
+        List<DisplayData> displays = new ArrayList<>();
+        String sql = "SELECT entity_uuid, type, preview FROM display_ownership WHERE owner_uuid = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ownerId.toString());
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                displays.add(new DisplayData(
+                        UUID.fromString(rs.getString("entity_uuid")),
+                        rs.getString("type"),
+                        rs.getString("preview")));
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not get displays", e);
+        }
+        return displays;
+    }
+
+    public List<DisplayData> getAllDisplays() {
+        List<DisplayData> displays = new ArrayList<>();
+        String sql = "SELECT entity_uuid, type, preview FROM display_ownership";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                displays.add(new DisplayData(
+                        UUID.fromString(rs.getString("entity_uuid")),
+                        rs.getString("type"),
+                        rs.getString("preview")));
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not get all displays", e);
+        }
+        return displays;
     }
 }

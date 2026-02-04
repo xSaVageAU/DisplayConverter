@@ -26,8 +26,10 @@ public class ItemFrameConverter extends JavaPlugin {
         // Register Commands
         getCommand("convertframe").setExecutor(new ConversionCommand(conversionManager));
         getCommand("convertsign").setExecutor(new SignConversionCommand(signManager));
-        getCommand("managedisplays").setExecutor(new ManagementCommand(conversionManager, databaseManager, false));
-        getCommand("adminmanagedisplays").setExecutor(new ManagementCommand(conversionManager, databaseManager, true));
+        getCommand("managedisplays")
+                .setExecutor(new ManagementCommand(conversionManager, signManager, databaseManager, false));
+        getCommand("adminmanagedisplays")
+                .setExecutor(new ManagementCommand(conversionManager, signManager, databaseManager, true));
 
         // Register Listeners
         getServer().getPluginManager().registerEvents(new FrameInteractListener(conversionManager), this);

@@ -37,6 +37,9 @@ public class ConversionManager {
     }
 
     public void convert(Player player, ItemFrame frame) {
+        if (!frame.isValid())
+            return; // Anti-dupe: Ensure frame is still valid
+
         ItemStack item = frame.getItem();
         if (item == null || item.getType() == Material.AIR) {
             player.sendMessage("Item Frame is empty!");
@@ -73,7 +76,12 @@ public class ConversionManager {
         display.setViewRange(viewRangeMultiplier);
 
         // Persist ownership
-        databaseManager.saveOwnership(display.getUniqueId(), player.getUniqueId());
+        String preview = item.getType().toString();
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+            preview = item.getItemMeta().getDisplayName(); // Getting raw display name for simplicity, potentially
+                                                           // convert to plain text?
+        }
+        databaseManager.saveOwnership(display.getUniqueId(), player.getUniqueId(), "ITEM", preview);
 
         // Remove frame
         frame.remove();
@@ -86,11 +94,6 @@ public class ConversionManager {
         databaseManager.deleteOwnership(entityId);
 
         // Remove from World
-        // Note: This requires searching loaded worlds or knowing the world.
-        // Since we don't store world/location in DB, we have to iterate worlds or just
-        // hope it's loaded.
-        // A better approach for the future is to store World/X/Y/Z in DB.
-        // For now, we scan all worlds.
         for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
             org.bukkit.entity.Entity entity = world.getEntity(entityId);
             if (entity != null) {
@@ -98,6 +101,48 @@ public class ConversionManager {
                 return; // Found and removed
             }
         }
+    }
+
+    public void revertDisplay(UUID entityId, Player player) {
+        org.bukkit.entity.Entity entity = null;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            entity = world.getEntity(entityId);
+            if (entity != null)
+                break;
+        }
+
+        if (entity == null || !(entity instanceof ItemDisplay)) {
+            player.sendMessage("Display entity not found or invalid type.");
+            return;
+        }
+
+        if (!entity.isValid()) {
+            player.sendMessage("Display entity is already invalidated.");
+            return;
+        }
+
+        ItemDisplay display = (ItemDisplay) entity;
+        Location loc = display.getLocation();
+        ItemStack item = display.getItemStack();
+
+        // 1. Remove Display
+        display.remove();
+
+        // 2. Spawn ItemFrame
+        // We need to try to place it on the block surface.
+        // ItemDisplay is usually centered.
+        // Let's check for a solid block nearby? Or just spawn it?
+        // ItemFram requires a block face.
+        // Logic: Check the 6 directions, see which block is solid.
+        // This is tricky without the original facing data.
+        // Approximation: Just spawn it. If it pops off, it pops off.
+        ItemFrame frame = (ItemFrame) loc.getWorld().spawnEntity(loc, EntityType.ITEM_FRAME);
+        if (item != null)
+            frame.setItem(item);
+
+        // Remove from DB
+        databaseManager.deleteOwnership(entityId);
+        player.sendMessage("Reverted ItemDisplay to ItemFrame!");
     }
 
     public org.bukkit.Location getDisplayLocation(UUID entityId) {

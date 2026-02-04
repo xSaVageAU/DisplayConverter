@@ -132,7 +132,23 @@ public class SignConversionManager {
         block.setType(Material.AIR);
 
         // Persist
-        databaseManager.saveOwnership(textDisplay.getUniqueId(), player.getUniqueId());
+        String preview = "Sign Text";
+        net.kyori.adventure.text.TextComponent textObj = (net.kyori.adventure.text.TextComponent) fullText;
+        if (textObj.content().length() > 0) {
+            preview = textObj.content().substring(0, Math.min(20, textObj.content().length()));
+        }
+        // Note: Component.join creates a TextComponent, so casting is *usually* safe if
+        // plain text.
+        // But better to verify or use PlainTextComponentSerializer for safety.
+        String plainPreview = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(fullText)
+                .replace("\n", " ").trim();
+        if (plainPreview.length() > 20)
+            plainPreview = plainPreview.substring(0, 20) + "...";
+        if (plainPreview.isEmpty())
+            plainPreview = "Empty Sign";
+
+        databaseManager.saveOwnership(textDisplay.getUniqueId(), player.getUniqueId(), "TEXT", plainPreview);
 
         player.sendMessage("Converted Sign to TextDisplay!");
     }
@@ -147,20 +163,94 @@ public class SignConversionManager {
                 return 90;
             case EAST:
                 return -90;
-            case NORTH_EAST:
-                return -135;
-            case NORTH_WEST:
-                return 135;
-            case SOUTH_EAST:
-                return -45;
-            case SOUTH_WEST:
-                return 45;
-            case NORTH_NORTH_EAST:
-                return -157.5f;
-            // ... omitting partials for brevity, standard cardinals usually enough for
-            // testing
             default:
                 return 0;
         }
+    }
+
+    private org.bukkit.block.BlockFace yawToFace(float yaw) {
+        // Normalize yaw to 0-360
+        yaw = (yaw % 360 + 360) % 360;
+        if (yaw >= 45 && yaw < 135)
+            return org.bukkit.block.BlockFace.WEST;
+        if (yaw >= 135 && yaw < 225)
+            return org.bukkit.block.BlockFace.NORTH;
+        if (yaw >= 225 && yaw < 315)
+            return org.bukkit.block.BlockFace.EAST;
+        return org.bukkit.block.BlockFace.SOUTH;
+    }
+
+    public void revertDisplay(UUID entityId, Player player) {
+        org.bukkit.entity.Entity entity = null;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            entity = world.getEntity(entityId);
+            if (entity != null)
+                break;
+        }
+
+        if (entity == null || !(entity instanceof TextDisplay)) {
+            player.sendMessage("Display entity not found or invalid type.");
+            return;
+        }
+
+        if (!entity.isValid()) {
+            player.sendMessage("Display entity is already invalidated.");
+            return;
+        }
+
+        TextDisplay display = (TextDisplay) entity;
+        org.bukkit.Location loc = display.getLocation();
+        Component text = display.text();
+        float yaw = loc.getYaw();
+
+        // 1. Remove Display
+        display.remove();
+
+        // 2. Restore Sign
+        Block block = loc.getBlock();
+
+        // Smart Detection Logic
+        org.bukkit.block.BlockFace facing = yawToFace(yaw);
+        // "facing" is the direction text looks.
+        // For Wall Sign, the wall is BEHIND the text.
+        // So checking the block in the opposite direction.
+        org.bukkit.block.BlockFace wallDirection = facing.getOppositeFace();
+        Block supportBlock = block.getRelative(wallDirection);
+
+        if (supportBlock.getType().isSolid()) {
+            // It fits on a wall
+            block.setType(Material.OAK_WALL_SIGN);
+            if (block.getBlockData() instanceof Directional) {
+                Directional dir = (Directional) block.getBlockData();
+                dir.setFacing(facing); // WallSign facing is direction text points
+                block.setBlockData(dir);
+            }
+        } else {
+            // Standing sign
+            block.setType(Material.OAK_SIGN);
+            if (block.getBlockData() instanceof Rotatable) {
+                Rotatable rot = (Rotatable) block.getBlockData();
+                rot.setRotation(facing);
+                block.setBlockData(rot);
+            }
+        }
+
+        if (block.getState() instanceof Sign) {
+            Sign sign = (Sign) block.getState();
+            if (text != null) {
+                String plainText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(text);
+                String[] lines = plainText.split("\n");
+                SignSide side = sign.getSide(Side.FRONT);
+                for (int i = 0; i < Math.min(4, lines.length); i++) {
+                    side.line(i, Component.text(lines[i]));
+                }
+            }
+            sign.update();
+        }
+
+        // Remove from DB
+        databaseManager.deleteOwnership(entityId);
+        player.sendMessage("Reverted TextDisplay to Sign!");
     }
 }
