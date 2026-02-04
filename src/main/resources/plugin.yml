@@ -29,3 +29,6 @@ permissions:
   itemframeconverter.manage.admin:
     description: Allows managing all displays
     default: op
+  itemframeconverter.teleport:
+    description: Allows teleporting to displays
+    default: op

@@ -63,6 +63,11 @@ public class ManagementCommand implements CommandExecutor {
                         player.sendMessage(Component.text("Display deleted.", NamedTextColor.GREEN));
                         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
                     } else if (sub.equals("tp")) {
+                        if (!player.hasPermission("itemframeconverter.teleport")) {
+                            player.sendMessage(
+                                    Component.text("You do not have permission to teleport.", NamedTextColor.RED));
+                            return true;
+                        }
                         Location loc = conversionManager.getDisplayLocation(uuid); // Checks all worlds
                         if (loc != null) {
                             player.teleport(loc);
@@ -136,11 +141,14 @@ public class ManagementCommand implements CommandExecutor {
             UUID uuid = data.entityId();
 
             // 1. Buttons (Fixed width-ish)
-            Component tpBtn = Component.text("[TP] ", NamedTextColor.AQUA)
-                    .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)
-                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent
-                            .showText(Component.text("Teleport", NamedTextColor.GRAY)))
-                    .clickEvent(ClickEvent.runCommand("/" + label + " tp " + uuid.toString()));
+            Component tpBtn = Component.empty();
+            if (player.hasPermission("itemframeconverter.teleport")) {
+                tpBtn = Component.text("[TP] ", NamedTextColor.AQUA)
+                        .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent
+                                .showText(Component.text("Teleport", NamedTextColor.GRAY)))
+                        .clickEvent(ClickEvent.runCommand("/" + label + " tp " + uuid.toString()));
+            }
 
             Component revBtn = Component.text("[REV] ", NamedTextColor.GOLD)
                     .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true)

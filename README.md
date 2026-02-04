@@ -26,6 +26,7 @@ A Paper plugin to convert Item Frames and Signs into Item and Text Displays.
 - `itemframeconverter.use`: Use the convert commands.
 - `itemframeconverter.manage.self`: Manage your own displays.
 - `itemframeconverter.manage.admin`: Manage all displays.
+- `itemframeconverter.teleport`: Allow teleporting to displays.
 
 ## Configuration
 The plugin creates a `config.yml` on first run:
