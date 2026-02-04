@@ -83,53 +83,19 @@ public class SignConversionManager {
                 default:
                     break;
             }
-            // Offset slightly from wall
-            // Using transformation translation is better than location offset for fine
-            // tuning
         } else if (block.getBlockData() instanceof Rotatable) {
             // Standing Sign
-            // Rotation is 0-15. 0 is South?
-            // Bukkit Rotatable maps directly to degrees usually? No it's block states.
-            // Actually simpler: just use the rotation of the block state?
-            // Note: Rotatable does not have getRotation() returning degrees cleanly in all
-            // versions.
-            // But we can approximate.
-            // Or just face the player? No, should be sign rotation.
-            // Let's rely on standard yaw conversion.
-            // Deprecated Block.getData() is byte.
-            // In 1.13+ Rotatable.getRotation() returns BlockFace.
-            // We need to convert BlockFace to yaw.
-            // Let's assume standard rotation for now.
-
-            // Simpler approach for now:
-            // Just set yaw.
-            // loc.setYaw(...);
-            // We'll refine visual rotation if needed.
-            // For Standing signs, let's just use the Rotation if possible.
-            // Actually, TextDisplay can handle rotation via Transformation or Location Yaw.
-            // Let's set Location Yaw.
-
-            // Hacky way for Rotatable:
-            // We will try to match the sign's rotation.
-            // Since I can't easily test exact degrees without running it, I'll stick to a
-            // safe default and maybe update if user complains.
-            // Actually, for standing signs, we prob just want to copy the yaw from the
-            // BlockState data if accessible, or calculate from BlockFace.
-            // block.getBlockData() -> Rotatable -> getRotation() -> BlockFace.
+            // Use block rotation state
         }
 
         TextDisplay textDisplay = (TextDisplay) block.getWorld().spawnEntity(loc, EntityType.TEXT_DISPLAY);
 
-        // Apply Orientation
+        // Apply Orientation & Transformation
         if (block.getBlockData() instanceof Directional) {
             loc.setYaw(yRot);
             textDisplay.teleport(loc);
 
-            // Offset to sit on the face (Wall signs are slightly off center)
-            // Wall signs are usually at the edge of the block.
-            // Standard block is 16px deep. Sign is maybe 2px?
-            // Translation: Z = -0.4ish (approx 7px out from center) to sit on face.
-            // Updated: User reports text is too high. Lowering Y offset in translation.
+            // Offset to sit on the face
             Transformation t = textDisplay.getTransformation();
             t.getTranslation().set(0, -0.1f, -0.42f); // Push forward and down slightly
 
@@ -140,15 +106,12 @@ public class SignConversionManager {
             textDisplay.setTransformation(t);
         } else if (block.getBlockData() instanceof Rotatable) {
             Rotatable rotatable = (Rotatable) block.getBlockData();
-            // Convert BlockFace to Yaw
             float yaw = faceToYaw(rotatable.getRotation());
             loc.setYaw(yaw);
             textDisplay.teleport(loc);
 
-            // Apply Scale for standing signs too
             Transformation t = textDisplay.getTransformation();
-            // Lower standing signs too
-            t.getTranslation().set(0, -0.15f, 0);
+            t.getTranslation().set(0, -0.15f, 0); // Lower standing signs too
 
             float scale = (float) plugin.getConfig().getDouble("sign-text-scale", 0.4);
             t.getScale().set(scale);
@@ -156,11 +119,11 @@ public class SignConversionManager {
         }
 
         textDisplay.text(fullText);
-        textDisplay.setAlignment(org.bukkit.entity.TextDisplay.TextAlignment.CENTER); // Ensure centered
-        textDisplay.setBillboard(org.bukkit.entity.Display.Billboard.FIXED); // Lock rotation
-        textDisplay.setBackgroundColor(org.bukkit.Color.fromARGB(0, 0, 0, 0)); // Transparent
+        textDisplay.setAlignment(org.bukkit.entity.TextDisplay.TextAlignment.CENTER);
+        textDisplay.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        textDisplay.setBackgroundColor(org.bukkit.Color.fromARGB(0, 0, 0, 0));
 
-        // Apply View Distance from Config
+        // Apply View Distance
         double viewDistanceBlocks = plugin.getConfig().getDouble("view-distance", 10.0);
         float viewRangeMultiplier = (float) (viewDistanceBlocks / 75.0);
         textDisplay.setViewRange(viewRangeMultiplier);

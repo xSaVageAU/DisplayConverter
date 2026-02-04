@@ -44,57 +44,30 @@ public class ConversionManager {
         }
 
         Location loc = frame.getLocation();
-        // ItemFrame location is usually the center of the block it is ON, but
-        // 'getFacing' tells us attachment.
-        // Actually, frame.getLocation() returns the location of the entity.
-        // For item frames, this is usually on the surface of the block.
-
-        // Item Display should be spawned at the center of the frame.
+        // Calculate spawn location
         Location spawnLoc = loc.clone();
-
-        // Adjust spawn location based on facing if necessary, but Display entities are
-        // centred on their location.
-        // Item Frames are slightly offset into the block they are on? No, they are on
-        // the face.
 
         // Spawn ItemDisplay
         ItemDisplay display = (ItemDisplay) loc.getWorld().spawnEntity(spawnLoc, EntityType.ITEM_DISPLAY);
         display.setItemStack(item);
 
-        // Setup transformation to mimic the frame's item rotation
-        // ItemFrames rotate the item inside 8 directions (45 degrees)
-        Rotation rotation = frame.getRotation(); // NONE, CLOCKWISE_45, etc.
-
-        // We need to adhere to the frame's facing direction first.
-        // If frame is on a NORTH face, it faces NORTH.
-        // Item Display by default faces SOUTH (I think?).
-
-        // For simplicity, let's start with a basic transformation and refine if needed.
-        // This is a draft logic.
+        // Mimic item rotation
+        Rotation rotation = frame.getRotation();
 
         // Align display to face the same way as the frame
         display.setRotation(loc.getYaw(), loc.getPitch());
 
-        // Apply rotation from the item frame interaction (the 45 degree spins)
-        // This requires manipulating the transformation matrix.
-        // Frame Rotation: 0 = 0, 1 = 45, etc.
+        // Apply rotation from the item frame interaction
         int rotOrd = rotation.ordinal();
         float zRot = (float) Math.toRadians(rotOrd * 45);
 
         Transformation t = display.getTransformation();
-        // Assume default scale is 1.0, which might be too big compared to item frame.
-        // Item frames render items at roughly 0.5 - 0.75 size?
         t.getScale().set(0.5f);
-
-        // Z-rotation for the item spin.
         t.getLeftRotation().set(new AxisAngle4f(zRot, 0, 0, 1));
 
         display.setTransformation(t);
 
-        // Apply View Distance from Config
-        // setViewRange is a multiplier of the base tracking range.
-        // Calibrated: Dividing by ~75.0 seems to give accurate block accuracy.
-        // e.g. 10.0 blocks / 75.0 = 0.133
+        // Apply View Distance from Calibrated Config
         double viewDistanceBlocks = plugin.getConfig().getDouble("view-distance", 10.0);
         float viewRangeMultiplier = (float) (viewDistanceBlocks / 75.0);
         display.setViewRange(viewRangeMultiplier);
